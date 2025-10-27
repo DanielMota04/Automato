@@ -1,65 +1,137 @@
 import time
 import os
-class Cores:
-    VERDE = '\033[92m'
-    CINZA = '\033[90m'
-    RESET = '\033[0m'
+import random
 
-def tabuleiro():
+VAZIO = 0
+ARVORE = 1
+QUEIMANDO = 2
+QUEIMADO = 3
+
+PROB_ESPALHAR = 0.6
+
+
+
+REGRA_VIZINHOS = [
+    (-1, -1), (-1, 0), (-1, 1),
+    (0, -1),          (0, 1),
+    (1, -1),  (1, 0),  (1, 1)
+]
+
+class Cores:
+    COR_VAZIO = '\033[90m■\033[0m'
+    COR_ARVORE = '\033[92m■\033[0m'
+    COR_QUEIMANDO = '\033[93m■\033[0m'
+    COR_QUEIMADO = '\033[91m■\033[0m'
+    
+    
+# def inicializa_tabuleiro():
+#     return [
+#         [ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+#         [ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+#         [ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+#         [ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+#         [ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+#         [ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+#         [ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+#         [ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+#         [ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+#         [ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+#     ]
+
+def inicializa_tabuleiro():
     return [
-        [0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 0],
+        [ARVORE, ARVORE, VAZIO, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+        [ARVORE, ARVORE, VAZIO, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+        [ARVORE, ARVORE, VAZIO, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+        [ARVORE, ARVORE, VAZIO, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+        [ARVORE, ARVORE, VAZIO, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+        [ARVORE, ARVORE, VAZIO, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+        [ARVORE, ARVORE, VAZIO, ARVORE, ARVORE, QUEIMANDO, ARVORE, ARVORE, ARVORE, ARVORE],
+        [ARVORE, ARVORE, VAZIO, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+        [ARVORE, ARVORE, VAZIO, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
+        [ARVORE, ARVORE, VAZIO, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE, ARVORE],
     ]
 
-def desenha(m):
-
-    formas = {
-        0: Cores.CINZA + '.' + Cores.RESET,
-        1: Cores.VERDE + '■' + Cores.RESET
+def desenha_tabuleiro(tabuleiro):
+    simbolos = {
+        VAZIO: Cores.COR_VAZIO,
+        ARVORE: Cores.COR_ARVORE,
+        QUEIMANDO: Cores.COR_QUEIMANDO,
+        QUEIMADO: Cores.COR_QUEIMADO
     }
     
-    for i in range(len(m)):
-        print(' '.join([formas[e] for e in m[i]]))
+    for linha in tabuleiro:
+        linha_simbolos = [simbolos[estado] for estado in linha]
+        print(' '.join(linha_simbolos))
 
-def conta_vizinhos_vivos(m, i, y):
-    regra_vizinhos = [
-        (-1, -1),(-1,0), (-1, 1), 
-        (0, -1), (0, 1),
-        (1, -1), (1, 0), (1, 1)
-        ]
-    coordenadas_vizinhos_tabuleiro = [(i+dcv[0], y+dcv[1]) for dcv in regra_vizinhos if 0 <= i+dcv[0] < len(m) and 0 <= y+dcv[1] < len(m[0])]
-    return len([1 for cv in coordenadas_vizinhos_tabuleiro if m[cv[0]][cv[1]] ==1])  
-     
 
-def atualiza(m):
-    novo_formato = [[0 for e in linha] for linha in m]
-    for i in range(len(m)):
-        for y in range(len(m[i])):
-            vizinhos_vivos = conta_vizinhos_vivos(m, i, y)
-            if m[i][y] == 1:
-                if vizinhos_vivos in {0, 1}:
-                    novo_formato[i][y] = 0
-                elif vizinhos_vivos >= 4:
-                    novo_formato[i][y] = 0
+def calcula_vizinhos_em_chamas(tabuleiro, linha, coluna):
+    total_vizinhos_em_chamas = 0
+    num_linhas = len(tabuleiro)
+    num_colunas = len(tabuleiro[0])
+    
+    for deslocamento in REGRA_VIZINHOS:
+        desloc_linha, desloc_coluna = deslocamento
+        
+        vizinho_linha = linha + desloc_linha
+        vizinho_coluna = coluna + desloc_coluna
+        
+        esta_no_tabuleiro = (
+            0 <= vizinho_linha < num_linhas and
+            0 <= vizinho_coluna < num_colunas
+        )
+        
+        if esta_no_tabuleiro:
+            if tabuleiro[vizinho_linha][vizinho_coluna] == QUEIMANDO:
+                total_vizinhos_em_chamas += 1
+                
+    return total_vizinhos_em_chamas
+
+
+def avanca_geracao(tabuleiro_atual):
+    num_linhas = len(tabuleiro_atual)
+    num_colunas = len(tabuleiro_atual[0])
+    
+    proximo_tabuleiro = [[VAZIO for _ in range(num_colunas)] for _ in range(num_linhas)]
+    
+    for linha in range(num_linhas):
+        for coluna in range(num_colunas):
+            
+            estado_atual = tabuleiro_atual[linha][coluna]
+            vizinhos_queimando = calcula_vizinhos_em_chamas(tabuleiro_atual, linha, coluna)
+                        
+            if estado_atual == QUEIMANDO:
+                proximo_tabuleiro[linha][coluna] = QUEIMADO
+            
+            elif estado_atual == QUEIMADO:
+                proximo_tabuleiro[linha][coluna] = VAZIO
+                
+            elif estado_atual == ARVORE:
+                if vizinhos_queimando > 0:
+                    if random.random() < PROB_ESPALHAR:
+                        proximo_tabuleiro[linha][coluna] = QUEIMANDO
+                    else:
+                        proximo_tabuleiro[linha][coluna] = ARVORE
                 else:
-                    novo_formato[i][y] = 1
-            else:
-                if vizinhos_vivos == 3:
-                    novo_formato[i][y] = 1
-                else:
-                    novo_formato[i][y] = 0
-    return novo_formato
+                    proximo_tabuleiro[linha][coluna] = ARVORE
+                
+    return proximo_tabuleiro
 
-def pausa():
-    time.sleep(0.5) 
 
-m = tabuleiro()
+def pausa(segundos=0.5):
+    time.sleep(segundos) 
 
-while True:
-    os.system("clear") 
-    desenha(m)
-    pausa()
-    m = atualiza(m)
+def limpar_tela():
+    os.system('cls' if os.name == 'nt' else 'clear') 
+
+
+if __name__ == "__main__":
+    
+    tabuleiro_atual = inicializa_tabuleiro()
+
+    while True:
+        limpar_tela() 
+        desenha_tabuleiro(tabuleiro_atual)
+        pausa(0.5)
+        
+        tabuleiro_atual = avanca_geracao(tabuleiro_atual)
