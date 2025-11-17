@@ -9,7 +9,9 @@ QUEIMADO = 3
 
 PROB_ESPALHAR = 0.6
 
+VENTO = (0, 1)
 
+BONUS_VENTO = 0.25
 
 REGRA_VIZINHOS = [
     (-1, -1), (-1, 0), (-1, 1),
@@ -88,6 +90,12 @@ def calcula_vizinhos_em_chamas(tabuleiro, linha, coluna):
     return total_vizinhos_em_chamas
 
 
+def influencia_do_vento(linha, coluna, viz_linha, viz_coluna):
+    dx = viz_linha - linha
+    dy = viz_coluna - coluna
+    return (dx, dy) == VENTO
+
+
 def avanca_geracao(tabuleiro_atual):
     num_linhas = len(tabuleiro_atual)
     num_colunas = len(tabuleiro_atual[0])
@@ -108,10 +116,24 @@ def avanca_geracao(tabuleiro_atual):
                 
             elif estado_atual == ARVORE:
                 if vizinhos_queimando > 0:
-                    if random.random() < PROB_ESPALHAR:
+                    prob = PROB_ESPALHAR
+                    for d_linha, d_coluna in REGRA_VIZINHOS:
+                        viz_linha = linha + d_linha
+                        viz_coluna = coluna + d_coluna
+
+                        if (
+                            0 <= viz_linha < num_linhas and
+                            0 <= viz_coluna < num_colunas and
+                            tabuleiro_atual[viz_linha][viz_coluna] == QUEIMANDO and
+                            influencia_do_vento(linha, coluna, viz_linha, viz_coluna)
+                        ):
+                            prob += BONUS_VENTO
+
+                    if random.random() < prob:
                         proximo_tabuleiro[linha][coluna] = QUEIMANDO
                     else:
                         proximo_tabuleiro[linha][coluna] = ARVORE
+
                 else:
                     proximo_tabuleiro[linha][coluna] = ARVORE
                 
