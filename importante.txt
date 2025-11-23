@@ -1,2 +1,0 @@
-baseados em:
-- Codigo base: https://github.com/GloBrito/game-of-life

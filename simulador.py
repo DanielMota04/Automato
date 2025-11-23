@@ -1,14 +1,11 @@
-import time
-import os
 import random
-
+import matplotlib.pyplot as plt
 from estados import *
 from imagem_to_tabuleiro import converte_imagem_para_tabuleiro
 
 PROB_ESPALHAR = 0.6
-VENTO = (1, 0)
-BONUS_VENTO = 0.25
-
+VENTO = (0, 1) 
+BONUS_VENTO = 0.3
 
 REGRA_VIZINHOS = [
     (-1, -1), (-1, 0), (-1, 1),
@@ -16,24 +13,19 @@ REGRA_VIZINHOS = [
     (1, -1),  (1, 0),  (1, 1)
 ]
 
+CORES_MPL = {
+    AGUA: (0, 0, 1),  
+    VEGETACAO: (0, 1, 0),
+    QUEIMANDO: (1, 0, 0),  
+    QUEIMADO: (0.3, 0.3, 0.3)
+}
 
-def limpar_tela():
-    os.system("cls" if os.name == "nt" else "clear")
-
-
-def pausa(seg=0.2):
-    time.sleep(seg)
-
-
-def influencia_do_vento(linha, coluna, viz_linha, viz_coluna):
-    dx = viz_linha - linha
-    dy = viz_coluna - coluna
-    return (dx, dy) == VENTO
-
-
-def desenha_tabuleiro(tab):
-    for linha in tab:
-        print(" ".join(MAPA_CORES[cell] for cell in linha))
+def desenha_tabuleiro_grafico(tab):
+    img = [[CORES_MPL[cell] for cell in linha] for linha in tab]
+    plt.imshow(img)
+    plt.axis('off')
+    plt.draw()
+    plt.pause(0.3)
 
 
 def calcula_vizinhos_em_chamas(tab, l, c):
@@ -43,12 +35,17 @@ def calcula_vizinhos_em_chamas(tab, l, c):
 
     for dl, dc in REGRA_VIZINHOS:
         nl, nc = l + dl, c + dc
-
         if 0 <= nl < L and 0 <= nc < C:
             if tab[nl][nc] == QUEIMANDO:
                 total += 1
 
     return total
+
+
+def influencia_do_vento(l, c, nl, nc):
+    dx = nl - l
+    dy = nc - c
+    return (dx, dy) == VENTO
 
 
 def avanca_geracao(tab):
@@ -61,7 +58,7 @@ def avanca_geracao(tab):
         for c in range(C):
             estado = tab[l][c]
 
-            if estado in NAO_INFLAMAVEIS:
+            if estado == AGUA:
                 continue
 
             if estado == QUEIMANDO:
@@ -69,22 +66,20 @@ def avanca_geracao(tab):
                 continue
 
             if estado == QUEIMADO:
-                novo[l][c] = VAZIO
                 continue
 
-            if estado in INFLAMAVEIS:
+            if estado == VEGETACAO:
                 viz = calcula_vizinhos_em_chamas(tab, l, c)
 
                 if viz > 0:
                     prob = PROB_ESPALHAR
 
                     for dl, dc in REGRA_VIZINHOS:
-                        nl, nc = l + dl, c + dc
+                        nl, nc = l+dl, c+dc
                         if (
-                            0 <= nl < L
-                            and 0 <= nc < C
-                            and tab[nl][nc] == QUEIMANDO
-                            and influencia_do_vento(l, c, nl, nc)
+                            0 <= nl < L and 0 <= nc < C and 
+                            tab[nl][nc] == QUEIMANDO and 
+                            influencia_do_vento(l, c, nl, nc)
                         ):
                             prob += BONUS_VENTO
 
@@ -96,12 +91,12 @@ def avanca_geracao(tab):
 
 if __name__ == "__main__":
     caminho = "mapas/forest.png"
+    # caminho = "mapas/forest1.jpg"
 
-    print("💡 Carregando mapa:", caminho)
-    tabuleiro = converte_imagem_para_tabuleiro(caminho, bloco=20)
+    tabuleiro = converte_imagem_para_tabuleiro(caminho, bloco=5)
 
+    plt.ion()
     while True:
-        limpar_tela()
-        desenha_tabuleiro(tabuleiro)
-        pausa(0.5)
+        plt.clf()
+        desenha_tabuleiro_grafico(tabuleiro)
         tabuleiro = avanca_geracao(tabuleiro)
